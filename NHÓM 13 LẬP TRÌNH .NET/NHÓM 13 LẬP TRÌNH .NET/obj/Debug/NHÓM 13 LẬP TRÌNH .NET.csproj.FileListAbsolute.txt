@@ -1,0 +1,19 @@
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\bin\Debug\NHÓM_13_LẬP_TRÌNH.NET.exe.config
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\bin\Debug\NHÓM_13_LẬP_TRÌNH.NET.exe
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\bin\Debug\NHÓM_13_LẬP_TRÌNH.NET.pdb
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM 13 LẬP TRÌNH .NET.csproj.AssemblyReference.cache
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmBaoCaoDoanhThu.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmBaoCaoHangTon.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmDMQuanAo.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmHoaDonBan.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmHoaDonNhap.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmDMKhachHang.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmMain.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmDMNhaCungCap.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmDMNhanVien.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.frmTimKiem.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.Properties.Resources.resources
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM 13 LẬP TRÌNH .NET.csproj.GenerateResource.cache
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM 13 LẬP TRÌNH .NET.csproj.CoreCompileInputs.cache
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.exe
+C:\Users\Thu Trang\source\repos\NHÓM 13 LẬP TRÌNH .NET\NHÓM 13 LẬP TRÌNH .NET\obj\Debug\NHÓM_13_LẬP_TRÌNH.NET.pdb
