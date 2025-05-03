@@ -16,7 +16,7 @@ namespace NHÓM_13_LẬP_TRÌNH.NET
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new frmBaoCaoDoanhThu());
+            Application.Run(new frmMain());
         }
     }
 }
