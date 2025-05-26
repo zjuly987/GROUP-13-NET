@@ -102,7 +102,7 @@ namespace NHÓM_13_LẬP_TRÌNH.NET
             txtTenKH.Clear();
             txtTongtien.Clear();
             mskNgayban.Clear();
-            txtSoHDBanp.Enabled = true;
+            txtSoHDBan.Enabled = true;
         }
 private void btnThemmoi_Click(object sender, EventArgs e)
 {
