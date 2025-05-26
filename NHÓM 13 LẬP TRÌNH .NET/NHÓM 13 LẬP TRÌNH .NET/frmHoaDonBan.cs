@@ -348,6 +348,40 @@ private void btnTimkiem_Click(object sender, EventArgs e)
         // Hiển thị thông báo lỗi nếu có vấn đề xảy ra
         MessageBox.Show("Lỗi khi tìm kiếm hóa đơn: " + ex.Message);
     }
+    private string NumberToVietnameseText(decimal number)
+        {
+            if (number == 0) return "không";
+            var units = new[] { "", "mốt", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
+            var tens = new[] { "", "", "hai mươi", "ba mươi", "bốn mươi", "năm mươi", "sáu mươi", "bảy mươi", "tám mươi", "chín mươi" };
+            long n = (long)Math.Round(number, 0);
+            var parts = new List<string>();
+            int idx = 0;
+            string[] scales = { "", "nghìn", "triệu", "tỷ" };
+            while (n > 0)
+            {
+                int block = (int)(n % 1000);
+                n /= 1000;
+                if (block > 0)
+                {
+                    int a = block / 100;
+                    int b = (block % 100) / 10;
+                    int c = block % 10;
+                    var sb = new StringBuilder();
+                    if (a > 0) sb.Append($"{units[a]} trăm ");
+                    if (b > 0) sb.Append(tens[b] + " ");
+                    else if (b == 0 && c > 0 && a > 0) sb.Append("lẻ ");
+                    if (c > 0)
+                    {
+                        if (c == 1 && b > 1) sb.Append("mốt");
+                        else if (c == 5 && b > 0) sb.Append("lăm");
+                        else sb.Append(units[c]);
+                    }
+                    parts.Insert(0, sb.ToString().Trim() + " " + scales[idx]);
+                }
+                idx++;
+            }
+            return string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p))).Trim();
+        }
 }
     }
 }
