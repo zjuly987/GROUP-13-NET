@@ -31,6 +31,79 @@ namespace NHÓM_13_LẬP_TRÌNH.NET
                 MessageBox.Show("Lỗi khởi tạo: " + ex.Message);
             }
         }
+    private void LoadDataToGridView()
+        {
+            string sql = "SELECT SoHDBan, TenNV, TenKH, Tongtien, Ngayban FROM tblHoaDonBan";
+            DataTable dt = DAO.LoadDataToTable(sql);
+            dataGridViewHDBan.DataSource = dt;
+        }
+
+        private void dataGridViewHDBan_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (dataGridViewHDBan.Rows.Count == 0) return;
+
+            //1. Thông tin chung —
+            var soHD = dataGridViewHDBan.CurrentRow.Cells["SoHDBan"].Value.ToString();
+            txtSoHDBan.Text = soHD;
+            cboMaNV.SelectedValue = dataGridViewHDNhap.CurrentRow.Cells["MaNV"].Value;
+            cboMaKH.SelectedValue = dataGridViewHDNhap.CurrentRow.Cells["MaKH"].Value;
+            mskNgayban.Text = Convert.ToDateTime(
+                                  dataGridViewHDBan.CurrentRow.Cells["Ngayban"].Value
+                                ).ToString("dd/MM/yyyy");
+            txtSoHDBan.Enabled = false;
+
+            //2. Thông tin sản phẩm —
+            string sqlDetail = @"
+      SELECT 
+        ct.Maquanao, sp.Tenquanao, sp.Dongia, 
+        ct.Soluong, ct.Giamgia,
+        ct.Soluong * sp.DonGia * (1 - ct.GiamGia/100.0) AS Thanhtien
+      FROM tblChiTietHDBan ct
+      JOIN tblquanao sp ON ct.Maquanao = sp.Maquanao
+      WHERE ct.SoHDBan = @SoHD";
+            var cmd = new SqlCommand(sqlDetail, DAO.conn);
+            cmd.Parameters.AddWithValue("@SoHD", soHD);
+            var adapter = new SqlDataAdapter(cmd);
+            var dtDetail = new DataTable();
+            adapter.Fill(dtDetail);
+
+            if (dtDetail.Rows.Count > 0)
+            {
+                var dr = dtDetail.Rows[0];
+                cboMaquanao.SelectedValue = dr["MaQuanAo"];
+                txtTenquanao.Text = dr["TenQuanAo"].ToString();
+                txtDongiaban.Text = dr["DonGia"].ToString();
+                txtSoluong.Text = dr["SoLuong"].ToString();
+                txtGiamgia.Text = dr["GiamGia"].ToString();
+                txtThanhtien.Text = dr["ThanhTien"].ToString();
+            }
+            else
+            {
+                cboMaquanao.SelectedIndex = -1;
+                txtTenquanao.Clear();
+                txtDongiaban.Clear();
+                txtSoluong.Clear();
+                txtGiamgia.Clear();
+                txtThanhtien.Clear();
+            }
+
+            //3. Tính tổng và chuyển thành chữ —
+            decimal tong = dtDetail.AsEnumerable()
+                          .Sum(r => Convert.ToDecimal(r["Thanhtien"]));
+            txtTongtien.Text = tong.ToString("N0");
+            lblBangchu.Text = NumberToVietnameseText(tong) + " đồng";
+        }
+
+
+        private void clear()
+        {
+            txtSoHDBan.Clear();
+            txtTenNV.Clear();
+            txtTenKH.Clear();
+            txtTongtien.Clear();
+            mskNgayban.Clear();
+            txtSoHDBanp.Enabled = true;
+        }
 private void btnThemmoi_Click(object sender, EventArgs e)
 {
     try
@@ -62,8 +135,6 @@ private void btnThemmoi_Click(object sender, EventArgs e)
             MessageBox.Show("Dữ liệu đã được thêm thành công.");
         }
 
-        // Làm mới lại DataGridView để hiển thị dữ liệu mới
-        ConnectToDatabase();
     }
     catch (Exception ex)
     {
@@ -109,9 +180,6 @@ private void btnLuu_Click(object sender, EventArgs e)
 
             // Hiển thị thông báo thành công
             MessageBox.Show("Hóa đơn đã được lưu thành công.");
-
-            // Làm mới lại DataGridView để hiển thị dữ liệu mới
-            ConnectToDatabase();
         }
     }
     catch (Exception ex)
