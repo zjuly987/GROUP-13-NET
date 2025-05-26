@@ -17,36 +17,98 @@ namespace HDNhap
         public frmHoaDonNhap()
         {
             InitializeComponent();
-            ConnectToDatabase();
-        }
-        private void ConnectToDatabase()
-        {
-            string connectionString = @"Server=LAPTOP-UKHEH49R;Database=qlyquanao;User Id=sa;Password=maihien271104;";  // Đảm bảo bạn đã khai báo chính xác thông tin kết nối
 
+            // Đăng ký event load form và click grid
+            this.Load += frmHoaDonNhap_Load;
+            dataGridViewHDNhap.CellClick += dataGridViewHDNhap_CellClick;
+        }
+
+        private void frmHoaDonNhap_Load(object sender, EventArgs e)
+        {
             try
             {
-                // Tạo đối tượng kết nối
-                using (SqlConnection connection = new SqlConnection(connectionString))
-                {
-                    connection.Open(); // Mở kết nối đến cơ sở dữ liệu
+                DAO.Connect();            // Kết nối 1 lần, lưu trong DAO.conn
+                LoadDataToGridView();
 
-                    // Thực thi truy vấn SQL
-                    string query = "SELECT * FROM tblHoaDonNhap"; // Thay đổi "tblHoaDonNhap" với tên bảng trong cơ sở dữ liệu của bạn
-                    SqlCommand cmd = new SqlCommand(query, connection);
-
-                    // Đọc dữ liệu từ cơ sở dữ liệu
-                    SqlDataAdapter dataAdapter = new SqlDataAdapter(cmd);
-                    DataTable dataTable = new DataTable();
-                    dataAdapter.Fill(dataTable); // Lấy kết quả truy vấn và lưu vào DataTable
-
-                    // Gán dữ liệu vào DataGridView
-                    dataGridViewHDNhap.DataSource = dataTable; // Cập nhật dữ liệu vào DataGridView
-                }
+                LoadDataToGridView();     // Đổ dữ liệu ra grid
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Lỗi kết nối: " + ex.Message); // Hiển thị thông báo lỗi nếu có vấn đề kết nối
+                MessageBox.Show("Lỗi khởi tạo: " + ex.Message);
             }
+        }
+        private void LoadDataToGridView()
+        {
+            string sql = "SELECT SoHDNhap, TenNV, TenNCC, TongTien, NgayNhap FROM tblHoaDonNhap";
+            DataTable dt = DAO.LoadDataToTable(sql);
+            dataGridViewHDNhap.DataSource = dt;
+        }
+
+        private void dataGridViewHDNhap_CellClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if (dataGridViewHDNhap.Rows.Count == 0) return;
+
+            //1. Thông tin chung —
+            var soHD = dataGridViewHDNhap.CurrentRow.Cells["SoHDNhap"].Value.ToString();
+            txtSoHDNhap.Text = soHD;
+            cboMaNV.SelectedValue = dataGridViewHDNhap.CurrentRow.Cells["MaNV"].Value;
+            cboMaNCC.SelectedValue = dataGridViewHDNhap.CurrentRow.Cells["MaNCC"].Value;
+            mskNgaynhap.Text = Convert.ToDateTime(
+                                  dataGridViewHDNhap.CurrentRow.Cells["NgayNhap"].Value
+                                ).ToString("dd/MM/yyyy");
+            txtSoHDNhap.Enabled = false;
+
+            //2. Thông tin sản phẩm —
+            string sqlDetail = @"
+      SELECT 
+        ct.MaQuanAo, sp.TenQuanAo, sp.DonGia, 
+        ct.SoLuong, ct.GiamGia,
+        ct.SoLuong * sp.DonGia * (1 - ct.GiamGia/100.0) AS ThanhTien
+      FROM tblChiTietHDNhap ct
+      JOIN tblQuanAo sp ON ct.MaQuanAo = sp.MaQuanAo
+      WHERE ct.SoHDNhap = @SoHD";
+            var cmd = new SqlCommand(sqlDetail, DAO.conn);
+            cmd.Parameters.AddWithValue("@SoHD", soHD);
+            var adapter = new SqlDataAdapter(cmd);
+            var dtDetail = new DataTable();
+            adapter.Fill(dtDetail);
+
+            if (dtDetail.Rows.Count > 0)
+            {
+                var dr = dtDetail.Rows[0];
+                cboMaquanao.SelectedValue = dr["MaQuanAo"];
+                txtTenquanao.Text = dr["TenQuanAo"].ToString();
+                txtDongianhap.Text = dr["DonGia"].ToString();
+                txtSoluong.Text = dr["SoLuong"].ToString();
+                txtGiamgia.Text = dr["GiamGia"].ToString();
+                txtThanhtien.Text = dr["ThanhTien"].ToString();
+            }
+            else
+            {
+                cboMaquanao.SelectedIndex = -1;
+                txtTenquanao.Clear();
+                txtDongianhap.Clear();
+                txtSoluong.Clear();
+                txtGiamgia.Clear();
+                txtThanhtien.Clear();
+            }
+
+            //3. Tính tổng và chuyển thành chữ —
+            decimal tong = dtDetail.AsEnumerable()
+                          .Sum(r => Convert.ToDecimal(r["ThanhTien"]));
+            txtTongtien.Text = tong.ToString("N0");
+            lblBangchu.Text = NumberToVietnameseText(tong) + " đồng";
+        }
+
+
+        private void clear()
+        {
+            txtSoHDNhap.Clear();
+            txtTenNV.Clear();
+            txtTenNCC.Clear();
+            txtTongtien.Clear();
+            mskNgaynhap.Clear();
+            txtSoHDNhap.Enabled = true;
         }
 
         private void btnThemmoi_Click(object sender, EventArgs e)
@@ -80,8 +142,6 @@ namespace HDNhap
                     MessageBox.Show("Dữ liệu đã được thêm thành công.");
                 }
 
-                // Làm mới lại DataGridView để hiển thị dữ liệu mới
-                ConnectToDatabase();
             }
             catch (Exception ex)
             {
@@ -117,7 +177,7 @@ namespace HDNhap
                     cmd.Parameters.AddWithValue("@TenNV", txtTenNV.Text);        // Thêm tên nhân viên
                     cmd.Parameters.AddWithValue("@TenNCC", txtTenNCC.Text);      // Thêm tên nhà cung cấp
                     cmd.Parameters.AddWithValue("@TongTien", decimal.Parse(txtTongtien.Text));  // Thêm tổng tiền
-                    cmd.Parameters.AddWithValue("@NgayNhap", DateTime.Parse(txtNgaynhap.Text));  // Thêm ngày nhập
+                    cmd.Parameters.AddWithValue("@NgayNhap", DateTime.Parse(mskNgaynhap.Text));  // Thêm ngày nhập
 
                     // Mở kết nối đến cơ sở dữ liệu
                     connection.Open();
@@ -128,8 +188,6 @@ namespace HDNhap
                     // Hiển thị thông báo thành công
                     MessageBox.Show("Hóa đơn đã được lưu thành công.");
 
-                    // Làm mới lại DataGridView để hiển thị dữ liệu mới
-                    ConnectToDatabase();
                 }
             }
             catch (Exception ex)
@@ -147,7 +205,7 @@ namespace HDNhap
                 txtTenNV.Clear();      // Xóa tên nhân viên
                 txtTenNCC.Clear();     // Xóa tên nhà cung cấp
                 txtTongtien.Clear();   // Xóa tổng tiền
-                txtNgaynhap.Clear();   // Xóa ngày nhập
+                mskNgaynhap.Clear();   // Xóa ngày nhập
 
                 // Có thể reset các ComboBox hoặc DateTimePicker nếu có
                 cboMaNV.SelectedIndex = -1; // Reset ComboBox Mã nhân viên
@@ -196,7 +254,7 @@ namespace HDNhap
             string tenNV = txtTenNV.Text;
             string tenNCC = txtTenNCC.Text;
             string tongTien = txtTongtien.Text;
-            string ngayNhap = txtNgaynhap.Text; // Nếu có trường Ngày nhập, bạn lấy từ TextBox
+            string ngayNhap = mskNgaynhap.Text; // Nếu có trường Ngày nhập, bạn lấy từ TextBox
 
             // Cấu trúc dữ liệu để in hóa đơn
             string invoiceDetails = $"Hóa Đơn Nhập\n\n" +
@@ -301,7 +359,42 @@ namespace HDNhap
         }
 
 
+        private string NumberToVietnameseText(decimal number)
+        {
+            if (number == 0) return "không";
+            var units = new[] { "", "mốt", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
+            var tens = new[] { "", "", "hai mươi", "ba mươi", "bốn mươi", "năm mươi", "sáu mươi", "bảy mươi", "tám mươi", "chín mươi" };
+            long n = (long)Math.Round(number, 0);
+            var parts = new List<string>();
+            int idx = 0;
+            string[] scales = { "", "nghìn", "triệu", "tỷ" };
+            while (n > 0)
+            {
+                int block = (int)(n % 1000);
+                n /= 1000;
+                if (block > 0)
+                {
+                    int a = block / 100;
+                    int b = (block % 100) / 10;
+                    int c = block % 10;
+                    var sb = new StringBuilder();
+                    if (a > 0) sb.Append($"{units[a]} trăm ");
+                    if (b > 0) sb.Append(tens[b] + " ");
+                    else if (b == 0 && c > 0 && a > 0) sb.Append("lẻ ");
+                    if (c > 0)
+                    {
+                        if (c == 1 && b > 1) sb.Append("mốt");
+                        else if (c == 5 && b > 0) sb.Append("lăm");
+                        else sb.Append(units[c]);
+                    }
+                    parts.Insert(0, sb.ToString().Trim() + " " + scales[idx]);
+                }
+                idx++;
+            }
+            return string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p))).Trim();
+        }
 
 
     }
+
 }
