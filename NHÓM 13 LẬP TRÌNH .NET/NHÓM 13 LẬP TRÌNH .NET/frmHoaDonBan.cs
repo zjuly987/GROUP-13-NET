@@ -10,43 +10,27 @@ using System.Windows.Forms;
 
 namespace NHÓM_13_LẬP_TRÌNH.NET
 {
-    public partial class frmHoaDonBan : Form
-    {
-        public frmHoaDonBan()
+    public frmHoaDonBan()
         {
             InitializeComponent();
-            ConnectToDatabase();
-        }
-        private void ConnectToDatabase()
-{
-    string connectionString = @"Server=LAPTOP-UKHEH49R;Database=qlyquanao;User Id=sa;Password=maihien271104;";  // Đảm bảo bạn đã khai báo chính xác thông tin kết nối
 
-    try
-    {
-        // Tạo đối tượng kết nối
-        using (SqlConnection connection = new SqlConnection(connectionString))
+            // Đăng ký event load form và click grid
+            this.Load += frmHoaDonBan_Load;
+            dataGridViewHDNhap.CellClick += dataGridViewHDNhap_CellClick;
+        }
+
+        private void frmHoaDonBan_Load(object sender, EventArgs e)
         {
-            connection.Open(); // Mở kết nối đến cơ sở dữ liệu
-
-            // Thực thi truy vấn SQL
-            string query = "SELECT * FROM tblHoaDonBan"; // Thay đổi "tblHoaDonBan" với tên bảng trong cơ sở dữ liệu của bạn
-            SqlCommand cmd = new SqlCommand(query, connection);
-
-            // Đọc dữ liệu từ cơ sở dữ liệu
-            SqlDataAdapter dataAdapter = new SqlDataAdapter(cmd);
-            DataTable dataTable = new DataTable();
-            dataAdapter.Fill(dataTable); // Lấy kết quả truy vấn và lưu vào DataTable
-
-            // Gán dữ liệu vào DataGridView
-            dataGridViewHDBan.DataSource = dataTable; // Cập nhật dữ liệu vào DataGridView
+            try
+            {
+                DAO.Connect();            // Kết nối 1 lần, lưu trong DAO.conn
+                LoadDataToGridView();     // Đổ dữ liệu ra grid
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khởi tạo: " + ex.Message);
+            }
         }
-    }
-    catch (Exception ex)
-    {
-        MessageBox.Show("Lỗi kết nối: " + ex.Message); // Hiển thị thông báo lỗi nếu có vấn đề kết nối
-    }
-}
-
 private void btnThemmoi_Click(object sender, EventArgs e)
 {
     try
