@@ -1,10 +1,16 @@
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
 using System.Data.SqlClient;
+using System.Drawing;
 using System.Globalization;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace hdonnhap
+namespace fhdonnhap
 {
     public partial class frmHoaDonNhap : Form
     {
@@ -110,10 +116,10 @@ namespace hdonnhap
         }
 
         private static readonly string[] ChuSo =
-{
-    "không", "một", "hai", "ba", "bốn",
-    "năm", "sáu", "bảy", "tám", "chín"
-};
+        {
+            "không", "một", "hai", "ba", "bốn",
+            "năm", "sáu", "bảy", "tám", "chín"
+        };
 
         /// <summary>
         /// Chuyển số thành chữ tiếng Việt (kèm "đồng").
@@ -189,6 +195,13 @@ namespace hdonnhap
 
         private void CalculateLineTotal()
         {
+            // 1) Nếu thiếu ô nào (Đơn giá, SL hoặc Giảm giá) thì thoát luôn
+            if (string.IsNullOrWhiteSpace(txtDongianhap.Text) ||
+                string.IsNullOrWhiteSpace(txtSoluong.Text) ||
+                string.IsNullOrWhiteSpace(txtGiamgia.Text))
+                return;
+
+            // 2) Khi cả 3 đã có dữ liệu, parse và tính
             if (decimal.TryParse(txtDongianhap.Text, out var dg) &&
                 int.TryParse(txtSoluong.Text, out var sl) &&
                 decimal.TryParse(txtGiamgia.Text, out var gg))
@@ -198,10 +211,12 @@ namespace hdonnhap
             }
             else
             {
-                // nếu chưa đủ dữ liệu thì để 0
+                // Chỉ gán 0 khi parse thất bại
                 txtThanhtien.Text = "0";
             }
         }
+
+
 
         private void UpdateTotalHeader()
         {
@@ -457,8 +472,7 @@ namespace hdonnhap
             txtTongtien.Text = rh["TongTien"].ToString();
             // …
 
-            lblBangchu.Text = ConvertNumberToWords(
-                                            (long)Convert.ToDecimal(rh["TongTien"]));
+            lblBangchu.Text = ConvertNumberToWords((long)Convert.ToDecimal(rh["TongTien"]));
 
             // Hiển thị chi tiết
             // Hiển thị chi tiết nhập hàng từ database, đúng tên bảng + cột:
@@ -470,7 +484,7 @@ namespace hdonnhap
                 c.SoLuong     AS SoLuong,
                 c.DonGia      AS DonGia,
                 c.GiamGia     AS GiamGia,
-                c.ThanhTien   AS ThanhTien
+                (sp.DonGiaBan * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
               FROM tblChiTietHDNhap AS c
               LEFT JOIN tblSanpham    AS sp
                 ON c.MaQuanAo = sp.MaQuanAo
@@ -497,7 +511,7 @@ namespace hdonnhap
             txtTongtien.Text = sum.ToString("N0");
             lblBangchu.Text = ConvertNumberToWords((long)sum);
 
-            UpdateTotalHeader();
+            RecalculateTotalFromGrid();
         }
 
         private void btnInHD_Click(object sender, EventArgs e)
@@ -521,7 +535,7 @@ namespace hdonnhap
                 c.SoLuong     AS SoLuong,
                 c.DonGia      AS DonGia,
                 c.GiamGia     AS GiamGia,
-                c.ThanhTien   AS ThanhTien
+                (sp.DonGiaBan * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
             FROM tblChiTietHDNhap AS c
             LEFT JOIN tblSanpham AS sp
                 ON c.MaQuanAo = sp.MaQuanAo
@@ -537,6 +551,7 @@ namespace hdonnhap
             dataGridViewHDNhap.AutoGenerateColumns = true;
             dataGridViewHDNhap.DataSource = dt;
             RecalculateTotalFromGrid();
+
 
 
             // Cập nhật tổng tiền
@@ -567,8 +582,6 @@ namespace hdonnhap
             txtTongtien.Text = sum.ToString("N0");
             lblBangchu.Text = ConvertNumberToWords((long)sum);
         }
-
-
 
     }
 }
