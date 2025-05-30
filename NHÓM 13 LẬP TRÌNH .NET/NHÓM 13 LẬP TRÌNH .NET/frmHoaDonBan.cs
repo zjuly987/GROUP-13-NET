@@ -1,387 +1,354 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+using System;
 using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Data.SqlClient;
+using System.Globalization;
 using System.Windows.Forms;
 
-namespace NHÓM_13_LẬP_TRÌNH.NET
+namespace hdonban
 {
-    public frmHoaDonBan()
+    public partial class frmHoaDonBan : Form
+    {
+        private string connectionString = @"Data Source=LAPTOP-UKHEH49R;Initial Catalog=btlon;Integrated Security=True;Encrypt=False";
+
+        public frmHoaDonBan()
         {
             InitializeComponent();
-
-            // Đăng ký event load form và click grid
-            this.Load += frmHoaDonBan_Load;
-            dataGridViewHDNhap.CellClick += dataGridViewHDNhap_CellClick;
+            Load += frmHoaDonBan_Load;
         }
 
         private void frmHoaDonBan_Load(object sender, EventArgs e)
         {
-            try
-            {
-                DAO.Connect();            // Kết nối 1 lần, lưu trong DAO.conn
-                LoadDataToGridView();     // Đổ dữ liệu ra grid
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Lỗi khởi tạo: " + ex.Message);
-            }
+            // Load grid và combobox
+            LoadComboBoxes();
+            ResetForm();
+            LoadGridData();
+
+            // Events
+            cboMaNV.SelectedIndexChanged += cboMaNV_SelectedIndexChanged;
+            cboMaKH.SelectedIndexChanged += cboMaKH_SelectedIndexChanged;
+            cboMaquanao.SelectedIndexChanged += cboMaQuanAo_SelectedIndexChanged;
+
+            txtDongiaban.Leave += (s, ev) => CalculateLineTotal();
+            txtSoluong.Leave += (s, ev) => CalculateLineTotal();
+            txtGiamgia.Leave += (s, ev) => CalculateLineTotal();
+
+            btnThemmoi.Click += btnThemMoi_Click;
+            btnLuu.Click += btnLuu_Click;
+            btnHuy.Click += btnHuy_Click;
+            btnDong.Click += btnDong_Click;
+            btnTimkiem.Click += btnTimKiem_Click;
+            btnInHD.Click += btnInHD_Click;
         }
-    private void LoadDataToGridView()
+
+        #region Load & Reset
+        private void LoadComboBoxes()
         {
-            string sql = "SELECT SoHDBan, TenNV, TenKH, Tongtien, Ngayban FROM tblHoaDonBan";
-            DataTable dt = DAO.LoadDataToTable(sql);
-            dataGridViewHDBan.DataSource = dt;
+            cboMaNV.DataSource = GetData("SELECT MaNV, TenNV FROM tblNhanVien");
+            cboMaNV.DisplayMember = "MaNV";
+            cboMaNV.ValueMember = "MaNV";
+            cboMaNV.SelectedIndex = -1;
+
+            cboMaKH.DataSource = GetData("SELECT MaKhach, TenKhach FROM tblKhachHang");
+            cboMaKH.DisplayMember = "MaKhach";
+            cboMaKH.ValueMember = "MaKhach";
+            cboMaKH.SelectedIndex = -1;
+
+            cboMaquanao.DataSource = GetData("SELECT MaQuanAo, TenQuanAo, DonGiaBan FROM tblSanpham");
+            cboMaquanao.DisplayMember = "MaQuanAo";
+            cboMaquanao.ValueMember = "MaQuanAo";
+            cboMaquanao.SelectedIndex = -1;
+
+            cboSoHDBan.DataSource = GetData("SELECT SoHDB FROM tblHoaDonBan");
+            cboSoHDBan.DisplayMember = "SoHDB";
+            cboSoHDBan.ValueMember = "SoHDB";
+            cboSoHDBan.SelectedIndex = -1;
         }
 
-        private void dataGridViewHDBan_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (dataGridViewHDBan.Rows.Count == 0) return;
-
-            //1. Thông tin chung —
-            var soHD = dataGridViewHDBan.CurrentRow.Cells["SoHDBan"].Value.ToString();
-            txtSoHDBan.Text = soHD;
-            cboMaNV.SelectedValue = dataGridViewHDNhap.CurrentRow.Cells["MaNV"].Value;
-            cboMaKH.SelectedValue = dataGridViewHDNhap.CurrentRow.Cells["MaKH"].Value;
-            mskNgayban.Text = Convert.ToDateTime(
-                                  dataGridViewHDBan.CurrentRow.Cells["Ngayban"].Value
-                                ).ToString("dd/MM/yyyy");
-            txtSoHDBan.Enabled = false;
-
-            //2. Thông tin sản phẩm —
-            string sqlDetail = @"
-      SELECT 
-        ct.Maquanao, sp.Tenquanao, sp.Dongia, 
-        ct.Soluong, ct.Giamgia,
-        ct.Soluong * sp.DonGia * (1 - ct.GiamGia/100.0) AS Thanhtien
-      FROM tblChiTietHDBan ct
-      JOIN tblquanao sp ON ct.Maquanao = sp.Maquanao
-      WHERE ct.SoHDBan = @SoHD";
-            var cmd = new SqlCommand(sqlDetail, DAO.conn);
-            cmd.Parameters.AddWithValue("@SoHD", soHD);
-            var adapter = new SqlDataAdapter(cmd);
-            var dtDetail = new DataTable();
-            adapter.Fill(dtDetail);
-
-            if (dtDetail.Rows.Count > 0)
-            {
-                var dr = dtDetail.Rows[0];
-                cboMaquanao.SelectedValue = dr["MaQuanAo"];
-                txtTenquanao.Text = dr["TenQuanAo"].ToString();
-                txtDongiaban.Text = dr["DonGia"].ToString();
-                txtSoluong.Text = dr["SoLuong"].ToString();
-                txtGiamgia.Text = dr["GiamGia"].ToString();
-                txtThanhtien.Text = dr["ThanhTien"].ToString();
-            }
-            else
-            {
-                cboMaquanao.SelectedIndex = -1;
-                txtTenquanao.Clear();
-                txtDongiaban.Clear();
-                txtSoluong.Clear();
-                txtGiamgia.Clear();
-                txtThanhtien.Clear();
-            }
-
-            //3. Tính tổng và chuyển thành chữ —
-            decimal tong = dtDetail.AsEnumerable()
-                          .Sum(r => Convert.ToDecimal(r["Thanhtien"]));
-            txtTongtien.Text = tong.ToString("N0");
-            lblBangchu.Text = NumberToVietnameseText(tong) + " đồng";
-        }
-
-
-        private void clear()
+        private void ResetForm()
         {
             txtSoHDBan.Clear();
-            txtTenNV.Clear();
-            txtTenKH.Clear();
-            txtTongtien.Clear();
             mskNgayban.Clear();
-            txtSoHDBan.Enabled = true;
+            cboMaNV.SelectedIndex = -1;
+            txtTenNV.Clear();
+            cboMaKH.SelectedIndex = -1;
+            txtTenKH.Clear();
+
+            cboMaquanao.SelectedIndex = -1;
+            txtTenquanao.Clear();
+            txtDongiaban.Clear();
+            txtSoluong.Clear();
+            txtGiamgia.Clear();
+            txtThanhtien.Clear();
+
+            dataGridViewHDBan.DataSource = null;
+            txtTongtien.Clear();
+            lblBangchu.Text = string.Empty;
         }
-private void btnThemmoi_Click(object sender, EventArgs e)
-{
-    try
-    {
-        string connectionString = @"Server=LAPTOP-UKHEH49R;Database=qlyquanao;User Id=sa;Password=maihien271104;";
+        #endregion
 
-        // Kiểm tra xem người dùng đã nhập đầy đủ dữ liệu chưa
-        if (string.IsNullOrEmpty(txtTenNV.Text) || string.IsNullOrEmpty(txtTenKH.Text) || string.IsNullOrEmpty(txtTongtien.Text))
+        #region Helpers
+        private DataTable GetData(string sql)
         {
-            MessageBox.Show("Vui lòng nhập đầy đủ thông tin.");
-            return;
-        }
-
-        // Câu lệnh SQL để thêm dữ liệu
-        string query = "INSERT INTO tblHoaDonBan (TenNV, TenKH, TongTien) VALUES (@TenNV, @TenKH, @TongTien)";
-
-        using (SqlConnection connection = new SqlConnection(connectionString))
-        {
-            SqlCommand cmd = new SqlCommand(query, connection);
-
-            // Thêm tham số vào câu lệnh SQL
-            cmd.Parameters.AddWithValue("@TenNV", txtTenNV.Text);
-            cmd.Parameters.AddWithValue("@TenKH", txtTenKH.Text);
-            cmd.Parameters.AddWithValue("@TongTien", decimal.Parse(txtTongtien.Text));
-
-            connection.Open();
-            cmd.ExecuteNonQuery(); // Thực thi câu lệnh INSERT
-
-            MessageBox.Show("Dữ liệu đã được thêm thành công.");
-        }
-
-    }
-    catch (Exception ex)
-    {
-        MessageBox.Show("Lỗi khi thêm dữ liệu: " + ex.Message);
-    }
-}
-private void btnLuu_Click(object sender, EventArgs e)
-{
-    try
-    {
-        // Kiểm tra xem người dùng đã nhập đầy đủ dữ liệu chưa
-        if (string.IsNullOrEmpty(txtSoHDBan.Text) || string.IsNullOrEmpty(txtTenNV.Text) ||
-            string.IsNullOrEmpty(txtTenKH.Text) || string.IsNullOrEmpty(txtTongtien.Text))
-        {
-            MessageBox.Show("Vui lòng nhập đầy đủ thông tin.");
-            return;
-        }
-
-        // Câu lệnh SQL để lưu dữ liệu vào cơ sở dữ liệu
-        string query = "INSERT INTO tblHoaDonBan (SoHDNhap, TenNV, TenKH, TongTien, NgayBan) " +
-                       "VALUES (@SoHDNhap, @TenNV, @TenKH, @TongTien, @NgayBan)";
-
-        // Chuỗi kết nối đến cơ sở dữ liệu
-        string connectionString = @"Server=LAPTOP-UKHEH49R;Database=qlyquanao;User Id=sa;Password=maihien271104;";
-
-        using (SqlConnection connection = new SqlConnection(connectionString))
-        {
-            // Tạo đối tượng SqlCommand để thực thi câu lệnh SQL
-            SqlCommand cmd = new SqlCommand(query, connection);
-
-            // Thêm tham số vào câu lệnh SQL
-            cmd.Parameters.AddWithValue("@SoHDBan", txtSoHDBan.Text);  // Thêm số hóa đơn nhập
-            cmd.Parameters.AddWithValue("@TenNV", txtTenNV.Text);        // Thêm tên nhân viên
-            cmd.Parameters.AddWithValue("@TenKH", txtTenKH.Text);      // Thêm tên khách hàng
-            cmd.Parameters.AddWithValue("@TongTien", decimal.Parse(txtTongtien.Text));  // Thêm tổng tiền
-            cmd.Parameters.AddWithValue("@NgayBan", DateTime.Parse(txtNgayban.Text));  // Thêm ngày bán
-
-            // Mở kết nối đến cơ sở dữ liệu
-            connection.Open();
-
-            // Thực thi câu lệnh SQL
-            cmd.ExecuteNonQuery();
-
-            // Hiển thị thông báo thành công
-            MessageBox.Show("Hóa đơn đã được lưu thành công.");
-        }
-    }
-    catch (Exception ex)
-    {
-        // Hiển thị thông báo lỗi nếu có vấn đề trong quá trình lưu dữ liệu
-        MessageBox.Show("Lỗi khi lưu hóa đơn: " + ex.Message);
-    }
-}
-private void btnHuy_Click(object sender, EventArgs e)
-{
-    try
-    {
-        // Xóa các dữ liệu trong các TextBox để người dùng có thể nhập lại
-        txtSoHDBan.Clear();   // Xóa số hóa đơn bán
-        txtTenNV.Clear();      // Xóa tên nhân viên
-        txtTenkhachhang.Clear();     // Xóa tên khách hàng
-        txtTongtien.Clear();   // Xóa tổng tiền
-        txtNgayban.Clear();   // Xóa ngày bán
-
-        // Có thể reset các ComboBox hoặc DateTimePicker nếu có
-        cboMaNV.SelectedIndex = -1; // Reset ComboBox Mã nhân viên
-        cboMaKH.SelectedIndex = -1; // Reset ComboBox Mã khách hàng
-        cboMaquanao.SelectedIndex = -1; // Reset ComboBox Mã quần áo
-
-        // Hiển thị thông báo xác nhận đã hủy dữ liệu
-        MessageBox.Show("Dữ liệu đã được hủy và form đã trở về trạng thái ban đầu.");
-    }
-    catch (Exception ex)
-    {
-        // Nếu có lỗi, thông báo lỗi
-        MessageBox.Show("Lỗi khi hủy dữ liệu: " + ex.Message);
-    }
-}
-private void btnInHD_Click(object sender, EventArgs e)
-{
-    try
-    {
-        // Kiểm tra dữ liệu đầu vào đã đầy đủ chưa
-        if (string.IsNullOrEmpty(txtSoHDBan.Text) || string.IsNullOrEmpty(txtTenNV.Text) ||
-            string.IsNullOrEmpty(txtTenkhachhang.Text) || string.IsNullOrEmpty(txtTongtien.Text))
-        {
-            MessageBox.Show("Vui lòng nhập đầy đủ thông tin trước khi in.");
-            return;
-        }
-
-        // Khởi tạo đối tượng PrintDocument
-        PrintDocument printDoc = new PrintDocument();
-        printDoc.PrintPage += new PrintPageEventHandler(PrintPage);  // Xử lý sự kiện khi in
-        printDoc.Print();  // Gọi phương thức in
-
-        MessageBox.Show("Hóa đơn đã được gửi để in.");
-    }
-    catch (Exception ex)
-    {
-        MessageBox.Show("Lỗi khi in hóa đơn: " + ex.Message);
-    }
-}
-
-// Phương thức xử lý in hóa đơn
-private void PrintPage(object sender, PrintPageEventArgs e)
-{
-    // Lấy thông tin cần in từ các TextBox
-    string soHD = txtSoHDBan.Text;
-    string tenNV = txtTenNV.Text;
-    string tenKH = txtTenkhachhang.Text;
-    string tongTien = txtTongtien.Text;
-    string ngayNhap = txtNgayban.Text; // Nếu có trường Ngày bán, bạn lấy từ TextBox
-
-    // Cấu trúc dữ liệu để in hóa đơn
-    string invoiceDetails = $"Hóa Đơn Bán\n\n" +
-                            $"Số Hóa Đơn: {soHD}\n" +
-                            $"Nhân Viên: {tenNV}\n" +
-                            $"Khách Hàng: {tenKH}\n" +
-                            $"Tổng Tiền: {tongTien}\n" +
-                            $"Ngày Nhập: {ngayNhap}\n\n" +
-                            $"Cảm ơn bạn đã sử dụng dịch vụ!";
-
-    // Thiết lập font và vị trí in trên trang
-    Font font = new Font("Arial", 12);
-    e.Graphics.DrawString(invoiceDetails, font, Brushes.Black, 100, 100);  // Vị trí và màu sắc
-}
-private void btnDong_Click(object sender, EventArgs e)
-{
-    // Hiển thị thông báo yêu cầu người dùng xác nhận
-    DialogResult dialogResult = MessageBox.Show("Bạn có muốn đóng không?", "Xác nhận đóng", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-    // Kiểm tra lựa chọn của người dùng
-    if (dialogResult == DialogResult.Yes)
-    {
-        // Nếu người dùng chọn Yes, đóng form
-        this.Close();
-    }
-    else
-    {
-        // Nếu người dùng chọn No, không làm gì và giữ lại cửa sổ
-        // Form sẽ không bị đóng
-        MessageBox.Show("Hành động đã bị hủy. Cửa sổ vẫn mở.");
-    }
-}
-private void btnTimkiem_Click(object sender, EventArgs e)
-{
-    try
-    {
-        // Kiểm tra xem người dùng đã nhập số hóa đơn hoặc từ khóa tìm kiếm chưa
-        if (string.IsNullOrEmpty(txtSoHDBan.Text) && string.IsNullOrEmpty(cboSoHDBan.Text))
-        {
-            MessageBox.Show("Vui lòng nhập số hóa đơn hoặc từ khóa tìm kiếm.");
-            return;
-        }
-
-        // Xây dựng câu lệnh SQL tìm kiếm dựa trên số hóa đơn hoặc từ khóa tìm kiếm
-        string query = "SELECT * FROM tblHoaDonBan WHERE ";
-
-        // Nếu người dùng nhập số hóa đơn, tìm kiếm theo số hóa đơn
-        if (!string.IsNullOrEmpty(txtSoHDBan.Text))
-        {
-            query += "SoHDBan = @SoHDBan";
-        }
-
-        // Nếu người dùng nhập từ khóa tìm kiếm, tìm kiếm theo từ khóa
-        if (!string.IsNullOrEmpty(cboSoHDBan.Text))
-        {
-            if (!string.IsNullOrEmpty(txtSoHDBan.Text)) // Nếu đã có điều kiện tìm theo số hóa đơn
+            using (var conn = new SqlConnection(connectionString))
+            using (var da = new SqlDataAdapter(sql, conn))
             {
-                query += " OR ";  // Sử dụng OR để kết hợp 2 điều kiện
+                var dt = new DataTable();
+                da.Fill(dt);
+                return dt;
             }
-            query += "TenNV LIKE @Timkiem OR TenKH LIKE @Timkiem"; // Tìm theo tên nhân viên hoặc tên khách hàng
         }
 
-        // Chuỗi kết nối đến cơ sở dữ liệu
-        string connectionString = @"Server=LAPTOP-UKHEH49R;Database=qlyquanao;User Id=sa;Password=maihien271104;";
+        private static readonly string[] ChuSo = { "không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
 
-        using (SqlConnection connection = new SqlConnection(connectionString))
+        private string ConvertNumberToWords(long number)
         {
-            SqlCommand cmd = new SqlCommand(query, connection);
-
-            // Thêm tham số vào câu lệnh SQL
-            if (!string.IsNullOrEmpty(txtSoHDBan.Text))
+            if (number == 0) return "Không đồng";
+            var sb = new System.Text.StringBuilder();
+            string[] units = { "", " nghìn", " triệu", " tỷ" };
+            int unitIndex = 0;
+            while (number > 0)
             {
-                cmd.Parameters.AddWithValue("@SoHDBan", txtSoHDBan.Text);  // Tìm kiếm theo số hóa đơn
+                int chunk = (int)(number % 1000);
+                if (chunk > 0)
+                {
+                    var text = ReadThreeDigits(chunk);
+                    sb.Insert(0, text + units[unitIndex] + " ");
+                }
+                number /= 1000;
+                unitIndex++;
             }
-            if (!string.IsNullOrEmpty(cboSoHDBan.Text))
+            var res = sb.ToString().Trim();
+            res = char.ToUpper(res[0]) + res.Substring(1) + " đồng";
+            return res;
+        }
+
+        private string ReadThreeDigits(int num)
+        {
+            int h = num / 100;
+            int t = (num % 100) / 10;
+            int o = num % 10;
+            var sb = new System.Text.StringBuilder();
+            if (h > 0) sb.Append(ChuSo[h] + " trăm");
+            if (t > 1)
             {
-                cmd.Parameters.AddWithValue("@Timkiem", "%" + cboSoHDBan.Text + "%");  // Tìm kiếm theo từ khóa (LIKE)
+                sb.Append((sb.Length > 0 ? " " : "") + ChuSo[t] + " mươi");
+                if (o > 0) sb.Append(o == 5 ? " lăm" : " " + ChuSo[o]);
+            }
+            else if (t == 1)
+            {
+                sb.Append((sb.Length > 0 ? " " : "") + "mười");
+                if (o > 0) sb.Append(o == 5 ? " lăm" : " " + ChuSo[o]);
+            }
+            else if (o > 0)
+            {
+                if (h > 0) sb.Append(" linh " + ChuSo[o]);
+                else sb.Append(ChuSo[o]);
+            }
+            return sb.ToString();
+        }
+        #endregion
+
+        #region Tính tiền
+        private void CalculateLineTotal()
+        {
+            if (string.IsNullOrWhiteSpace(txtDongiaban.Text) ||
+                string.IsNullOrWhiteSpace(txtSoluong.Text) ||
+                string.IsNullOrWhiteSpace(txtGiamgia.Text))
+            {
+                return;
             }
 
-            // Mở kết nối và thực thi câu lệnh tìm kiếm
-            connection.Open();
-            SqlDataAdapter dataAdapter = new SqlDataAdapter(cmd);
-            DataTable dataTable = new DataTable();
-            dataAdapter.Fill(dataTable);
-
-            // Nếu có kết quả tìm thấy, hiển thị vào DataGridView
-            if (dataTable.Rows.Count > 0)
+            if (decimal.TryParse(txtDongiaban.Text, out var dg) &&
+                int.TryParse(txtSoluong.Text, out var sl) &&
+                decimal.TryParse(txtGiamgia.Text, out var gg))
             {
-                dataGridViewHDBan.DataSource = dataTable;  // Hiển thị kết quả vào DataGridView
+                var tt = dg * sl * (1 - gg);
+                txtThanhtien.Text = tt.ToString("N0");
             }
             else
             {
-                MessageBox.Show("Không tìm thấy hóa đơn.");
+                txtThanhtien.Text = "0";
             }
         }
-    }
-    catch (Exception ex)
-    {
-        // Hiển thị thông báo lỗi nếu có vấn đề xảy ra
-        MessageBox.Show("Lỗi khi tìm kiếm hóa đơn: " + ex.Message);
-    }
-    private string NumberToVietnameseText(decimal number)
+
+
+        private void RecalculateTotalFromGrid()
         {
-            if (number == 0) return "không";
-            var units = new[] { "", "mốt", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
-            var tens = new[] { "", "", "hai mươi", "ba mươi", "bốn mươi", "năm mươi", "sáu mươi", "bảy mươi", "tám mươi", "chín mươi" };
-            long n = (long)Math.Round(number, 0);
-            var parts = new List<string>();
-            int idx = 0;
-            string[] scales = { "", "nghìn", "triệu", "tỷ" };
-            while (n > 0)
+            decimal sum = 0;
+            foreach (DataGridViewRow row in dataGridViewHDBan.Rows)
             {
-                int block = (int)(n % 1000);
-                n /= 1000;
-                if (block > 0)
-                {
-                    int a = block / 100;
-                    int b = (block % 100) / 10;
-                    int c = block % 10;
-                    var sb = new StringBuilder();
-                    if (a > 0) sb.Append($"{units[a]} trăm ");
-                    if (b > 0) sb.Append(tens[b] + " ");
-                    else if (b == 0 && c > 0 && a > 0) sb.Append("lẻ ");
-                    if (c > 0)
-                    {
-                        if (c == 1 && b > 1) sb.Append("mốt");
-                        else if (c == 5 && b > 0) sb.Append("lăm");
-                        else sb.Append(units[c]);
-                    }
-                    parts.Insert(0, sb.ToString().Trim() + " " + scales[idx]);
-                }
-                idx++;
+                if (row.IsNewRow) continue;
+                if (decimal.TryParse(row.Cells["ThanhTien"].Value?.ToString(), out var v))
+                    sum += v;
             }
-            return string.Join(" ", parts.Where(p => !string.IsNullOrWhiteSpace(p))).Trim();
+            txtTongtien.Text = sum.ToString("N0");
+            lblBangchu.Text = ConvertNumberToWords((long)sum);
         }
-}
+        #endregion
+
+        #region Sự kiện ComboBox
+        private void cboMaNV_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cboMaNV.SelectedIndex < 0) return;
+            txtTenNV.Text = ((DataRowView)cboMaNV.SelectedItem)["TenNV"].ToString();
+        }
+        private void cboMaKH_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cboMaKH.SelectedIndex < 0) return;
+            txtTenKH.Text = ((DataRowView)cboMaKH.SelectedItem)["TenKhach"].ToString();
+        }
+        private void cboMaQuanAo_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cboMaquanao.SelectedIndex < 0) return;
+            txtTenquanao.Text = ((DataRowView)cboMaquanao.SelectedItem)["TenQuanAo"].ToString();
+            // nếu muốn lấy giá bán từ Sanpham
+            var drv = (DataRowView)cboMaquanao.SelectedItem;
+            txtDongiaban.Text = string.Format("{0:N0}", drv["DonGiaBan"]);
+            // thêm dòng chi tiết nếu có tồn tại
+        }
+        #endregion
+
+        #region Các nút chức năng
+        private void btnThemMoi_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtSoHDBan.Text) == false)
+            {
+                if (MessageBox.Show("Dữ liệu chưa lưu, tạo mới?", "Xác nhận",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.No)
+                    return;
+            }
+            ResetForm();
+        }
+        private void btnLuu_Click(object sender, EventArgs e)
+        {
+            RecalculateTotalFromGrid();
+            // validate header
+            if (string.IsNullOrWhiteSpace(txtSoHDBan.Text))
+            {
+                MessageBox.Show("Số HĐ không được trống"); return;
+            }
+            if (!DateTime.TryParseExact(mskNgayban.Text, "dd/MM/yyyy", null,
+               DateTimeStyles.None, out _))
+            {
+                MessageBox.Show("Ngày bán không hợp lệ"); return;
+            }
+            if (cboMaNV.SelectedIndex < 0) { MessageBox.Show("Chọn NV"); return; }
+            if (cboMaKH.SelectedIndex < 0) { MessageBox.Show("Chọn KH"); return; }
+            // header
+            using (var conn = new SqlConnection(connectionString))
+            {
+                conn.Open(); var tran = conn.BeginTransaction();
+                try
+                {
+                    var sqlH = "INSERT INTO tblHoaDonBan(SoHDB,MaNV,NgayBan,MaKhach,TongTien)" +
+                             "VALUES(@so,@nv,@ng,@kh,@tong)";
+                    using (var cmd = new SqlCommand(sqlH, conn, tran))
+                    {
+                        cmd.Parameters.AddWithValue("@so", txtSoHDBan.Text);
+                        cmd.Parameters.AddWithValue("@nv", cboMaNV.SelectedValue);
+                        cmd.Parameters.AddWithValue("@ng", DateTime.ParseExact(mskNgayban.Text, "dd/MM/yyyy", CultureInfo.InvariantCulture));
+                        cmd.Parameters.AddWithValue("@kh", cboMaKH.SelectedValue);
+                        cmd.Parameters.AddWithValue("@tong", decimal.Parse(txtTongtien.Text));
+                        cmd.ExecuteNonQuery();
+                    }
+                    // chi tiết
+                    var sqlD = "INSERT INTO tblChiTietHDBan(SoHDB,MaQuanAo,SoLuong,DonGia,GiamGia,ThanhTien)" +
+                             "VALUES(@so,@qa,@sl,@dg,@gg,@tt)";
+                    foreach (DataGridViewRow row in dataGridViewHDBan.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+                        using (var cmd = new SqlCommand(sqlD, conn, tran))
+                        {
+                            cmd.Parameters.AddWithValue("@so", txtSoHDBan.Text);
+                            cmd.Parameters.AddWithValue("@qa", row.Cells["MaQuanAo"].Value);
+                            cmd.Parameters.AddWithValue("@sl", row.Cells["SoLuong"].Value);
+                            cmd.Parameters.AddWithValue("@dg", row.Cells["DonGia"].Value);
+                            cmd.Parameters.AddWithValue("@gg", row.Cells["GiamGia"].Value);
+                            cmd.Parameters.AddWithValue("@tt", row.Cells["ThanhTien"].Value);
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    tran.Commit();
+                    MessageBox.Show("Lưu thành công", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    LoadComboBoxes(); ResetForm();
+                }
+                catch (Exception ex) { tran.Rollback(); MessageBox.Show("Lỗi: " + ex.Message); }
+            }
+        }
+        private void btnHuy_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Hủy bỏ thay đổi?", "Xác nhận", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                ResetForm();
+        }
+        private void btnDong_Click(object sender, EventArgs e)
+        {
+            if (MessageBox.Show("Đóng form?", "Xác nhận", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                Close();
+        }
+        private void btnTimKiem_Click(object sender, EventArgs e)
+        {
+            if (cboSoHDBan.SelectedIndex < 0) { MessageBox.Show("Chọn số HĐ"); return; }
+            var so = cboSoHDBan.SelectedValue.ToString();
+            var dtH = GetData($"SELECT * FROM tblHoaDonBan WHERE SoHDB='{so}'");
+            if (dtH.Rows.Count == 0) { MessageBox.Show("Không tìm thấy"); return; }
+            var r = dtH.Rows[0];
+            txtSoHDBan.Text = r["SoHDB"].ToString();
+            mskNgayban.Text = Convert.ToDateTime(r["NgayBan"]).ToString("dd/MM/yyyy");
+            cboMaNV.SelectedValue = r["MaNV"];
+            cboMaKH.SelectedValue = r["MaKhach"];
+            txtTongtien.Text = r["TongTien"].ToString();
+            lblBangchu.Text = ConvertNumberToWords((long)Convert.ToDecimal(r["TongTien"]));
+            // chi tiết
+            var dtD = new DataTable();
+            var sqlD = @"SELECT c.MaQuanAo, sp.TenQuanAo, c.SoLuong, sp.DonGiaBan, c.GiamGia, (sp.DonGiaBan * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien" +
+                      " FROM tblChiTietHDBan c LEFT JOIN tblSanpham sp on c.MaQuanAo=sp.MaQuanAo" +
+                      " WHERE c.SoHDB=@so";
+            using (var conn = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand(sqlD, conn))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                cmd.Parameters.AddWithValue("@so", so);
+                da.Fill(dtD);
+            }
+            dataGridViewHDBan.AutoGenerateColumns = true;
+            dataGridViewHDBan.DataSource = dtD;
+            RecalculateTotalFromGrid();
+        }
+        private void btnInHD_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("In hóa đơn bán chưa triển khai.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        #endregion
+
+        /// <summary>
+        /// Load toàn bộ chi tiết hóa đơn bán lên grid
+        /// </summary>
+        private void LoadGridData()
+        {
+            var dt = new DataTable();
+            var sql = @"
+            SELECT
+               c.SoHDB,
+               c.MaQuanAo,
+               sp.TenQuanAo,
+               c.SoLuong,
+               sp.DonGiaBan AS DonGia,
+               c.GiamGia,
+               (sp.DonGiaBan * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
+               FROM tblChiTietHDBan c
+               JOIN tblSanpham    sp ON c.MaQuanAo = sp.MaQuanAo";
+
+            using (var conn = new SqlConnection(connectionString))
+            using (var cmd = new SqlCommand(sql, conn))
+            using (var da = new SqlDataAdapter(cmd))
+            {
+                da.Fill(dt);
+            }
+
+            dataGridViewHDBan.AutoGenerateColumns = true;
+            dataGridViewHDBan.DataSource = dt;
+            RecalculateTotalFromGrid();
+        }
+
     }
 }
