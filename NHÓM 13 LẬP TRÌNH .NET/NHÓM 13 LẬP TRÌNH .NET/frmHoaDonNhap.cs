@@ -366,7 +366,7 @@ namespace fhdonnhap
                     // 1) Lưu header
                     var sqlHD = @"
                         INSERT INTO tblHoaDonNhap
-                          (SoHDNhap, NgayNhap, MaNV, MaNCC, TongTien)
+                          (SoHDN, NgayNhap, MaNV, MaNCC, TongTien)
                         VALUES
                           (@SoHD, @Ngay, @MaNV, @MaNCC, @Tong)";
                     using (var cmd = new SqlCommand(sqlHD, conn, tran))
@@ -384,8 +384,8 @@ namespace fhdonnhap
 
                     // 2) Lưu chi tiết
                     var sqlCT = @"
-                        INSERT INTO tblCTHDNhap
-                          (SoHDNhap, MaQuanAo, SoLuong, DonGia, GiamGia, ThanhTien)
+                        INSERT INTO tblChiTietHDNhap
+                          (SoHDN, MaQuanAo, SoLuong, DonGia, GiamGia, ThanhTien)
                         VALUES
                           (@SoHD, @MaQA, @SL, @DG, @GG, @TT)";
                     foreach (DataRow r in dtDetails.Rows)
@@ -484,7 +484,7 @@ namespace fhdonnhap
                 c.SoLuong     AS SoLuong,
                 c.DonGia      AS DonGia,
                 c.GiamGia     AS GiamGia,
-                (sp.DonGiaBan * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
+                (c.DonGia * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
               FROM tblChiTietHDNhap AS c
               LEFT JOIN tblSanpham    AS sp
                 ON c.MaQuanAo = sp.MaQuanAo
@@ -535,7 +535,7 @@ namespace fhdonnhap
                 c.SoLuong     AS SoLuong,
                 c.DonGia      AS DonGia,
                 c.GiamGia     AS GiamGia,
-                (sp.DonGiaBan * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
+                (c.DonGia * c.SoLuong * (1 - c.GiamGia)) AS ThanhTien
             FROM tblChiTietHDNhap AS c
             LEFT JOIN tblSanpham AS sp
                 ON c.MaQuanAo = sp.MaQuanAo
