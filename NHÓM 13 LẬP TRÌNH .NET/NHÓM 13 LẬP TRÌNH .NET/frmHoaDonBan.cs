@@ -262,7 +262,6 @@ namespace hdonban
                             cmd.Parameters.AddWithValue("@so", txtSoHDBan.Text);
                             cmd.Parameters.AddWithValue("@qa", row.Cells["MaQuanAo"].Value);
                             cmd.Parameters.AddWithValue("@sl", row.Cells["SoLuong"].Value);
-                            cmd.Parameters.AddWithValue("@dg", row.Cells["DonGia"].Value);
                             cmd.Parameters.AddWithValue("@gg", row.Cells["GiamGia"].Value);
                             cmd.Parameters.AddWithValue("@tt", row.Cells["ThanhTien"].Value);
                             cmd.ExecuteNonQuery();
